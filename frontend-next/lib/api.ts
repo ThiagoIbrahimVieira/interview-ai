@@ -51,10 +51,9 @@ class ApiClient {
         return this.handleResponse(retryResponse);
       }
       this.clearTokens();
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-      return null;
+      const error = new Error("Session expired");
+      (error as Error & { status: number }).status = 401;
+      throw error;
     }
 
     return this.handleResponse(response);

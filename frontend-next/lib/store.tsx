@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, type ReactNode } from "react";
 
 interface StoreContextValue {
   user: Record<string, unknown> | null;
@@ -15,8 +15,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [currentSession, setCurrentSession] = useState<Record<string, unknown> | null>(null);
 
+  const value = useMemo(
+    () => ({ user, setUser, currentSession, setCurrentSession }),
+    [user, currentSession],
+  );
+
   return (
-    <StoreContext.Provider value={{ user, setUser, currentSession, setCurrentSession }}>
+    <StoreContext.Provider value={value}>
       {children}
     </StoreContext.Provider>
   );
