@@ -91,7 +91,7 @@ export default function ReportPage() {
   const score = session.final_score || report?.overall_score || 0;
   const scoreColor = score >= 70 ? "var(--color-success)" : score >= 50 ? "var(--color-warning)" : "var(--color-error)";
 
-  const parseList = (text: string | null, fallback: string) =>
+  const parseList = (text: string | null | undefined, fallback: string) =>
     (text || fallback).split("\n").filter(Boolean);
 
   return (

@@ -12,12 +12,6 @@ interface ChatMessage {
   content: string;
 }
 
-declare global {
-  interface Window {
-    puter?: { ai?: { chat: (messages: unknown[]) => Promise<unknown> } };
-  }
-}
-
 export default function InterviewPage() {
   const router = useRouter();
   const params = useParams();
