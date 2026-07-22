@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function Header({
   title,
@@ -17,16 +17,35 @@ export default function Header({
     document.documentElement.setAttribute("data-theme", saved);
   }, []);
 
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
-  };
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("theme", next);
+      return next;
+    });
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    window.dispatchEvent(new Event("toggle-sidebar"));
+  }, []);
 
   return (
     <>
-      <div className="header-title">{title}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+        <button
+          className="btn btn-ghost btn-icon mobile-menu-btn"
+          onClick={toggleSidebar}
+          title="Toggle menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div className="header-title">{title}</div>
+      </div>
       <div className="header-actions">
         <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

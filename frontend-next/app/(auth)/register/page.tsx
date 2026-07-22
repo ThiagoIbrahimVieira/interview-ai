@@ -21,8 +21,18 @@ export default function RegisterPage() {
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
     const confirmPassword = (form.elements.namedItem("confirm_password") as HTMLInputElement).value;
 
+    if (!fullName || !email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -36,7 +46,12 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || "Registration failed");
+      const msg = error.message || "Registration failed";
+      if (msg.includes("Network error") || msg.includes("Failed to fetch")) {
+        toast.error("Cannot connect to server. Please try again later.");
+      } else {
+        toast.error(msg);
+      }
       setLoading(false);
     }
   };

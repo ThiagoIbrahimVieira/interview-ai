@@ -67,7 +67,7 @@ export default function ReportPage() {
         toast.error("Failed to load report");
         setLoading(false);
       });
-  }, [sessionId, toast]);
+  }, [sessionId]);
 
   if (loading) {
     return (

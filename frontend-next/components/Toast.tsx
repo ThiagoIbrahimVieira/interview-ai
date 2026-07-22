@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
 
 interface ToastItem {
   id: number;
@@ -22,17 +22,33 @@ let toastId = 0;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  const removeToast = useCallback((id: number) => {
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const addToast = useCallback((message: string, type: string) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = setTimeout(() => {
+      removeToast(id);
+      timersRef.current.delete(id);
     }, 4000);
-  }, []);
+    timersRef.current.set(id, timer);
+  }, [removeToast]);
 
-  const removeToast = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  const ctxValue: ToastContextValue = {
+    success: useCallback((msg: string) => addToast(msg, "success"), [addToast]),
+    error: useCallback((msg: string) => addToast(msg, "error"), [addToast]),
+    warning: useCallback((msg: string) => addToast(msg, "warning"), [addToast]),
+    info: useCallback((msg: string) => addToast(msg, "info"), [addToast]),
+  };
 
   const icons: Record<string, string> = {
     success:
@@ -45,14 +61,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ToastContext.Provider
-      value={{
-        success: (msg) => addToast(msg, "success"),
-        error: (msg) => addToast(msg, "error"),
-        warning: (msg) => addToast(msg, "warning"),
-        info: (msg) => addToast(msg, "info"),
-      }}
-    >
+    <ToastContext.Provider value={ctxValue}>
       {children}
       <div className="toast-container">
         {toasts.map((toast) => (

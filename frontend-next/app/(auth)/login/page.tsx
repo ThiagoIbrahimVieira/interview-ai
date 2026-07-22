@@ -19,6 +19,11 @@ export default function LoginPage() {
     const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
     setLoading(true);
     try {
       await api.login(email, password);
@@ -28,7 +33,12 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { message?: string };
-      toast.error(error.message || "Login failed");
+      const msg = error.message || "Login failed";
+      if (msg.includes("Network error") || msg.includes("Failed to fetch")) {
+        toast.error("Cannot connect to server. Please try again later.");
+      } else {
+        toast.error(msg);
+      }
       setLoading(false);
     }
   };

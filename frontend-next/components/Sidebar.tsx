@@ -50,7 +50,7 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useStore();
@@ -64,42 +64,50 @@ export default function Sidebar() {
     router.push("/login");
   };
 
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-primary)" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <polygon points="10 8 16 12 10 16 10 8" fill="var(--color-accent-primary)" />
-          </svg>
-          InterviewAI
+    <>
+      <div className={`sidebar-overlay ${isOpen ? "active" : ""}`} onClick={onClose}></div>
+      <aside className={`sidebar ${isOpen ? "open" : ""}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-primary)" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10 8 16 12 10 16 10 8" fill="var(--color-accent-primary)" />
+            </svg>
+            InterviewAI
+          </div>
         </div>
-      </div>
-      <nav className="sidebar-nav">
-        {navItems.map((item) => (
-          <Link
-            key={item.page}
-            href={item.href}
-            className={`nav-item ${currentPage === item.page ? "active" : ""}`}
-          >
-            {item.icon}
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <div className="sidebar-footer">
-        <div className="sidebar-user" onClick={handleLogout}>
-          <div className="avatar">{initial.toUpperCase()}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {(user?.full_name as string) || (user?.email as string) || "User"}
-            </div>
-            <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {(user?.email as string) || ""}
+        <nav className="sidebar-nav">
+          {navItems.map((item) => (
+            <Link
+              key={item.page}
+              href={item.href}
+              className={`nav-item ${currentPage === item.page ? "active" : ""}`}
+              onClick={handleNavClick}
+            >
+              {item.icon}
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-user" onClick={handleLogout}>
+            <div className="avatar">{initial.toUpperCase()}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {(user?.full_name as string) || (user?.email as string) || "User"}
+              </div>
+              <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {(user?.email as string) || ""}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { useStore } from "@/lib/store";
@@ -10,6 +10,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { setUser } = useStore();
   const [checking, setChecking] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const handleToggle = () => setSidebarOpen((prev) => !prev);
+    window.addEventListener("toggle-sidebar", handleToggle);
+    return () => window.removeEventListener("toggle-sidebar", handleToggle);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -40,8 +51,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-layout">
-      <Sidebar />
-      <div className="main-content">{children}</div>
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      <div className="main-content">
+        {children}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,13 @@ class ApiClient {
 
   constructor() {
     this.baseURL = API_BASE;
+    if (typeof window !== "undefined" && this.baseURL === "/api/v1") {
+      console.warn(
+        "[InterviewAI] NEXT_PUBLIC_API_URL is not set. API calls will fail. " +
+        "Set it in your Vercel dashboard environment variables to: " +
+        "https://interviewai-backend.onrender.com/api/v1"
+      );
+    }
   }
 
   getToken(): string | null {
@@ -41,17 +48,29 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, { ...options, headers });
+    let response: Response;
+    try {
+      response = await fetch(url, { ...options, headers });
+    } catch (err) {
+      throw new Error(
+        "Network error: unable to reach the server. " +
+        "Please check your connection or verify the API URL is configured correctly."
+      );
+    }
 
     if (response.status === 401) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${this.getToken()}`;
-        const retryResponse = await fetch(url, { ...options, headers });
-        return this.handleResponse(retryResponse);
+        try {
+          const retryResponse = await fetch(url, { ...options, headers });
+          return this.handleResponse(retryResponse);
+        } catch {
+          throw new Error("Network error during token refresh retry.");
+        }
       }
       this.clearTokens();
-      const error = new Error("Session expired");
+      const error = new Error("Session expired. Please log in again.");
       (error as Error & { status: number }).status = 401;
       throw error;
     }
@@ -62,6 +81,7 @@ class ApiClient {
   async handleResponse(response: Response) {
     const text = await response.text();
     let data: unknown;
+
     try {
       data = text ? JSON.parse(text) : {};
     } catch {
@@ -70,7 +90,7 @@ class ApiClient {
 
     if (!response.ok) {
       const errData = data as { detail?: string };
-      const error = new Error(errData?.detail || "Request failed");
+      const error = new Error(errData?.detail || `Request failed (${response.status})`);
       (error as Error & { status: number }).status = response.status;
       (error as Error & { data: unknown }).data = data;
       throw error;
