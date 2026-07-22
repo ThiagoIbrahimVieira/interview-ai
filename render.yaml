@@ -19,7 +19,7 @@ services:
           name: interviewai-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: "https://interview-ai-ecru-theta.vercel.app"
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES

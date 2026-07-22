@@ -3,12 +3,12 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 import asyncio
-from app.database import Base
+from app.database import Base, _normalize_async_url
 from app.config import get_settings
 
 config = context.config
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", _normalize_async_url(settings.DATABASE_URL))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
