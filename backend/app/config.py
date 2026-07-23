@@ -50,6 +50,10 @@ class FlexibleListEnvSource(EnvSettingsSource):
         if (is_complex or value_is_complex) and isinstance(value, str):
             stripped = value.strip()
 
+            import logging
+            trace_cfg = logging.getLogger("trace")
+            trace_cfg.info(f"[TRACE] config: field={field_name} raw={repr(value)} stripped={repr(stripped)} is_complex={is_complex} value_is_complex={value_is_complex}")
+
             # Empty string → empty list
             if not stripped:
                 return []
@@ -61,7 +65,9 @@ class FlexibleListEnvSource(EnvSettingsSource):
                 )
 
             # Plain text: single URL or comma-separated URLs
-            return [item.strip() for item in stripped.split(",") if item.strip()]
+            result = [item.strip() for item in stripped.split(",") if item.strip()]
+            trace_cfg.info(f"[TRACE] config: field={field_name} parsed result={result}")
+            return result
 
         return super().prepare_field_value(field_name, field, value, value_is_complex)
 

@@ -54,8 +54,12 @@ async def health_check():
 
 @app.get("/debug/cors")
 async def debug_cors():
+    import os
+    raw = os.environ.get("ALLOWED_ORIGINS", "<NOT SET>")
     return {
         "ALLOWED_ORIGINS": settings.ALLOWED_ORIGINS,
         "type": type(settings.ALLOWED_ORIGINS).__name__,
         "len": len(settings.ALLOWED_ORIGINS),
+        "items": [repr(x) for x in settings.ALLOWED_ORIGINS],
+        "raw_env": repr(raw),
     }
