@@ -4,7 +4,7 @@ from app.repositories.report import ReportRepository
 from app.models.interview import InterviewSession, InterviewConfig, Message
 from app.models.report import Report
 from app.models.score import Score
-from app.core.exceptions import NotFoundException, ForbiddenException
+from app.core.exceptions import NotFoundException, ForbiddenException, ValidationException
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -42,8 +42,15 @@ class InterviewService:
         return await self.repo.get_user_sessions(user_id, page, per_page)
 
     async def add_message(
-        self, session_id: int, role: str, content: str
+        self, session_id: int, role: str, content: str, user_id: int
     ) -> Message:
+        if role not in ("user", "assistant", "system"):
+            raise ValidationException(f"Invalid message role: {role}")
+
+        session = await self.get_session(session_id, user_id)
+        if session.status != "active":
+            raise ValidationException("Interview is not active")
+
         message = Message(
             session_id=session_id,
             role=role,
@@ -54,8 +61,11 @@ class InterviewService:
     async def get_messages(self, session_id: int):
         return await self.repo.get_session_messages(session_id)
 
-    async def end_interview(self, session_id: int, user_id: int, final_score: float = 0.0) -> InterviewSession:
+    async def end_interview(self, session_id: int, user_id: int) -> InterviewSession:
         session = await self.get_session(session_id, user_id)
+        if session.status == "completed":
+            return session
+
         duration = 0
         if session.started_at:
             started = session.started_at
@@ -68,7 +78,6 @@ class InterviewService:
             status="completed",
             ended_at=datetime.now(timezone.utc),
             duration_seconds=duration,
-            final_score=final_score,
         )
         return session
 
@@ -90,6 +99,8 @@ class InterviewService:
         return await self.report_repo.create_report(report)
 
     async def add_score(self, session_id: int, category: str, score: float, feedback: str = "") -> Score:
+        if not 0.0 <= score <= 100.0:
+            raise ValidationException("Score must be between 0 and 100")
         s = Score(
             session_id=session_id,
             category=category,

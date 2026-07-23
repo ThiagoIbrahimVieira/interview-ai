@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import selectinload
 from app.models.interview import InterviewSession, Message, InterviewConfig
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import Optional, List, Tuple
 
 
@@ -105,15 +105,12 @@ class InterviewRepository:
                     seen_dates.add(d)
 
             sorted_dates = sorted(seen_dates, reverse=True)
-            today = date.today()
+            today = datetime.now(timezone.utc).date()
             expected = today
             for d in sorted_dates:
                 if d == expected:
                     streak += 1
                     expected -= timedelta(days=1)
-                elif d == expected - timedelta(days=1):
-                    streak += 1
-                    expected = d - timedelta(days=1)
                 else:
                     break
 

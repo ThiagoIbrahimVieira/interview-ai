@@ -13,17 +13,7 @@ is_sqlite = database_url.startswith("sqlite")
 
 
 def _normalize_async_url(url: str) -> str:
-    """Ensure a bare PostgreSQL URL carries the asyncpg driver suffix.
-
-    Render and most managed providers supply a bare ``postgresql://`` URL.
-    ``create_async_engine`` needs an explicit async driver suffix — without
-    it SQLAlchemy falls back to the sync ``psycopg2`` driver which is not
-    installed.
-
-    Only rewrites URLs that have **no** driver suffix (``postgresql://`` or
-    ``postgres://``).  URLs that already carry a driver (e.g.
-    ``postgresql+asyncpg://``) are returned unchanged.
-    """
+    """Ensure a bare PostgreSQL URL carries the asyncpg driver suffix."""
     if url.startswith("postgresql://"):
         return "postgresql+asyncpg://" + url[len("postgresql://"):]
     if url.startswith("postgres://"):
@@ -56,26 +46,19 @@ class Base(DeclarativeBase):
 
 
 async def get_db() -> AsyncSession:
-    trace.info("[TRACE] get_db: creating session from factory")
-    t0 = time.monotonic()
     async with async_session_factory() as session:
-        elapsed = time.monotonic() - t0
-        trace.info(f"[TRACE] get_db: session created in {elapsed:.3f}s")
         try:
             yield session
-            trace.info("[TRACE] get_db: route handler done, committing")
-            t1 = time.monotonic()
-            await session.commit()
-            trace.info(f"[TRACE] get_db: commit done in {time.monotonic() - t1:.3f}s")
-        except Exception as exc:
-            trace.info(f"[TRACE] get_db: exception {type(exc).__name__}: {exc}")
+        except Exception:
             await session.rollback()
             raise
         finally:
             await session.close()
-            trace.info("[TRACE] get_db: session closed")
 
 
 async def init_db():
+    """Initialize database. In production, use Alembic migrations instead."""
+    if settings.APP_ENV == "production":
+        return
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

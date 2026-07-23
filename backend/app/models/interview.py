@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float, func
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from app.database import Base
 
 
@@ -38,6 +39,10 @@ class InterviewSession(Base):
     messages = relationship("Message", back_populates="session")
     scores = relationship("Score", back_populates="session")
     report = relationship("Report", back_populates="session", uselist=False)
+
+    @hybrid_property
+    def message_count(self):
+        return len(self.messages) if self.messages else 0
 
 
 class Message(Base):
