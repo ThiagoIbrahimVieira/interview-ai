@@ -96,7 +96,7 @@ export default function ProfilePage() {
           <h1 className="page-title">Profile</h1>
           <p className="page-subtitle">Manage your account settings</p>
         </div>
-        <div style={{ display: "grid", gap: "var(--space-6)", maxWidth: 560 }}>
+        <div style={{ display: "grid", gap: "var(--space-6)", maxWidth: "min(560px, 100%)" }}>
           <div className="card">
             <h3 style={{ marginBottom: "var(--space-5)", display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "var(--text-lg)" }}>
               <User size={18} style={{ color: "var(--color-accent-primary)" }} />

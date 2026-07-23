@@ -130,7 +130,7 @@ export default function ReportPage() {
           transition={{ duration: 0.4 }}
           style={{ textAlign: "center", marginBottom: "var(--space-8)" }}
         >
-          <div className="report-score-circle" style={{ border: `3px solid ${scoreColor}`, color: scoreColor, boxShadow: `0 0 30px ${scoreColor}15` }}>
+          <div className="report-score-circle" style={{ border: `2px solid ${scoreColor}`, color: scoreColor, boxShadow: `0 0 0 1px ${scoreColor}10, 0 2px 8px rgba(0,0,0,0.15)` }}>
             {Math.round(score)}%
           </div>
           <h2 style={{ marginBottom: "var(--space-2)", fontSize: "var(--text-2xl)" }}>Interview Complete</h2>
