@@ -8,7 +8,6 @@ from app.core.rate_limiter import RateLimitMiddleware
 from app.api.v1.router import router as api_router
 import logging
 import time
-import traceback
 
 settings = get_settings()
 
@@ -42,12 +41,11 @@ app = FastAPI(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
-    logger.error(f"Unhandled exception: {exc}\n{''.join(tb)}")
-    detail = str(exc) if settings.DEBUG else "Internal server error"
+    logger = logging.getLogger("uvicorn.error")
+    logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"detail": detail, "type": type(exc).__name__},
+        content={"detail": "Internal server error", "type": type(exc).__name__},
     )
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -67,33 +65,3 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
-
-
-@app.get("/debug/db")
-async def debug_db():
-    from app.database import engine
-    try:
-        from sqlalchemy import text
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1"))
-            return {"db": "ok", "result": result.scalar()}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"db": "error", "detail": str(e), "type": type(e).__name__})
-
-
-@app.get("/debug/alembic")
-async def debug_alembic():
-    from app.database import engine
-    try:
-        from sqlalchemy import text
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position"))
-            columns = [row[0] for row in result.fetchall()]
-            has_token = "token_version" in columns
-            if not has_token:
-                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0"))
-                await conn.commit()
-                columns.append("token_version")
-            return {"columns": columns, "has_token_version": True, "added": not has_token}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
