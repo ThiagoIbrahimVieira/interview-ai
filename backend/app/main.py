@@ -89,6 +89,11 @@ async def debug_alembic():
         async with engine.connect() as conn:
             result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position"))
             columns = [row[0] for row in result.fetchall()]
-            return {"columns": columns, "has_token_version": "token_version" in columns}
+            has_token = "token_version" in columns
+            if not has_token:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0"))
+                await conn.commit()
+                columns.append("token_version")
+            return {"columns": columns, "has_token_version": True, "added": not has_token}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
