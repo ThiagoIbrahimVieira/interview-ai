@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, security
 from app.services.user import UserService
 from app.services.interview import InterviewService
 from app.schemas.user import (
@@ -22,54 +23,103 @@ from app.schemas.interview import (
     MessageResponse,
 )
 from app.schemas.report import ReportResponse
-from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.security import create_access_token, create_refresh_token, decode_token, revoke_token
+from app.core.rate_limiter import get_rate_store
+from app.core.secure_logging import SecureLogger
 from app.models.user import User
+from app.config import get_settings
 import logging
-import time
 
-trace = logging.getLogger("trace")
+logger = logging.getLogger(__name__)
+secure = SecureLogger()
+settings = get_settings()
 
 router = APIRouter()
 
 
 @router.post("/auth/register", response_model=UserResponse, status_code=201)
-async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    trace.info(f"[TRACE] register endpoint: entered with email={data.email}")
+async def register(data: UserCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    rate_store = get_rate_store()
+
+    register_key = f"register:{client_ip}"
+    if not rate_store.check_login_rate_limit(register_key, settings.MAX_LOGIN_ATTEMPTS, settings.LOCKOUT_MINUTES):
+        logger.warning(f"Register rate limit exceeded ip={client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts. Please try again later.",
+        )
+
     service = UserService(db)
     user = await service.register(data.email, data.password, data.full_name)
-    trace.info(f"[TRACE] register endpoint: returning user_id={user.id}")
+    await db.commit()
+    rate_store.reset_login_attempts(register_key)
+    logger.info(f"Register success ip={client_ip}")
     return user
 
 
 @router.post("/auth/login", response_model=TokenResponse)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
-    trace.info(f"[TRACE] login endpoint: entered with email={data.email}")
-    t0 = time.monotonic()
+async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    rate_store = get_rate_store()
+
+    login_key = f"login:{client_ip}"
+    if not rate_store.check_login_rate_limit(login_key, settings.MAX_LOGIN_ATTEMPTS, settings.LOCKOUT_MINUTES):
+        logger.warning(f"Login rate limit exceeded ip={client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later.",
+        )
+
     service = UserService(db)
-    trace.info("[TRACE] login endpoint: calling service.authenticate")
     user = await service.authenticate(data.email, data.password)
-    trace.info(f"[TRACE] login endpoint: authenticate returned user_id={user.id} in {time.monotonic() - t0:.3f}s")
-    trace.info("[TRACE] login endpoint: generating access token")
-    access_token = create_access_token(data={"sub": str(user.id)})
-    trace.info("[TRACE] login endpoint: generating refresh token")
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    trace.info(f"[TRACE] login endpoint: returning response in {time.monotonic() - t0:.3f}s total")
+
+    rate_store.reset_login_attempts(login_key)
+
+    access_token = create_access_token(data={"sub": str(user.id), "ver": user.token_version})
+    refresh_token = create_refresh_token(data={"sub": str(user.id), "ver": user.token_version})
+
+    logger.info(f"Login success user_id={user.id} ip={client_ip}")
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/auth/refresh", response_model=TokenResponse)
-async def refresh_token(data: TokenRefresh, db: AsyncSession = Depends(get_db)):
+async def refresh_token(data: TokenRefresh, request: Request, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
     payload = decode_token(data.refresh_token)
     if not payload or payload.get("type") != "refresh":
+        logger.warning(f"Invalid refresh token ip={client_ip}")
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    user_id = payload.get("sub")
-    service = UserService(db)
-    user = await service.get_by_id(int(user_id))
+    if payload.get("jti"):
+        revoke_token(payload["jti"])
 
-    access_token = create_access_token(data={"sub": str(user.id)})
-    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    user_id = payload.get("sub")
+    try:
+        uid = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    service = UserService(db)
+    user = await service.get_by_id(uid)
+
+    access_token = create_access_token(data={"sub": str(user.id), "ver": user.token_version})
+    new_refresh_token = create_refresh_token(data={"sub": str(user.id), "ver": user.token_version})
+
+    logger.info(f"Token refresh user_id={user.id} ip={client_ip}")
     return TokenResponse(access_token=access_token, refresh_token=new_refresh_token)
+
+
+@router.post("/auth/logout", status_code=204)
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
+):
+    payload = decode_token(credentials.credentials)
+    if payload and payload.get("jti"):
+        revoke_token(payload["jti"])
+    logger.info(f"Logout user_id={current_user.id}")
+    return None
 
 
 @router.get("/auth/me", response_model=UserResponse)
@@ -85,6 +135,8 @@ async def change_password(
 ):
     service = UserService(db)
     await service.change_password(current_user, data.current_password, data.new_password)
+    await db.commit()
+    logger.info(f"Password changed user_id={current_user.id}")
 
 
 @router.get("/profile", response_model=ProfileResponse)
@@ -114,6 +166,7 @@ async def update_profile(
         experience_level=data.experience_level,
         bio=data.bio,
     )
+    await db.commit()
     return profile
 
 
@@ -125,13 +178,15 @@ async def start_interview(
 ):
     service = InterviewService(db)
     session = await service.start_interview(current_user.id, data.model_dump())
+    await db.commit()
+    logger.info(f"Interview started user_id={current_user.id} session_id={session.id}")
     return session
 
 
 @router.get("/interviews", response_model=InterviewSessionList)
 async def list_interviews(
-    page: int = 1,
-    per_page: int = 10,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -161,12 +216,12 @@ async def add_message(
     db: AsyncSession = Depends(get_db),
 ):
     service = InterviewService(db)
-    await service.get_session(session_id, current_user.id)
-    message = await service.add_message(session_id, "user", data.content)
+    message = await service.add_message(session_id, "user", data.content, current_user.id)
+    await db.commit()
     return message
 
 
-@router.get("/interviews/{session_id}/messages")
+@router.get("/interviews/{session_id}/messages", response_model=list[MessageResponse])
 async def get_messages(
     session_id: int,
     current_user: User = Depends(get_current_user),
@@ -186,6 +241,8 @@ async def end_interview(
 ):
     service = InterviewService(db)
     session = await service.end_interview(session_id, current_user.id)
+    await db.commit()
+    logger.info(f"Interview ended user_id={current_user.id} session_id={session_id}")
     return session
 
 
