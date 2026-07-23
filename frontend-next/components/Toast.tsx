@@ -1,8 +1,6 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Info, X } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 
 interface ToastItem {
   id: number;
@@ -20,13 +18,6 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 let toastId = 0;
-
-const icons: Record<string, ReactNode> = {
-  success: <CheckCircle2 size={16} />,
-  error: <XCircle size={16} />,
-  warning: <AlertTriangle size={16} />,
-  info: <Info size={16} />,
-};
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -59,35 +50,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     info: useCallback((msg: string) => addToast(msg, "info"), [addToast]),
   };
 
+  const icons: Record<string, string> = {
+    success:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+    error:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    warning:
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  };
+
   return (
     <ToastContext.Provider value={ctxValue}>
       {children}
       <div className="toast-container">
-        <AnimatePresence mode="popLayout">
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              layout
-              initial={{ opacity: 0, x: 40, scale: 0.96 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 40, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              className={`toast toast-${toast.type}`}
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
+            <span
+              style={{ color: `var(--color-${toast.type})` }}
+              dangerouslySetInnerHTML={{ __html: icons[toast.type] || icons.info }}
+            />
+            <span style={{ flex: 1, fontSize: "var(--text-sm)" }}>{toast.message}</span>
+            <button
+              onClick={() => removeToast(toast.id)}
+              style={{ color: "var(--color-text-tertiary)", cursor: "pointer" }}
             >
-              <span style={{ color: `var(--color-${toast.type})`, display: "flex", alignItems: "center", flexShrink: 0 }}>
-                {icons[toast.type] || icons.info}
-              </span>
-              <span style={{ flex: 1, fontSize: "var(--text-sm)", color: "var(--color-text-primary)" }}>{toast.message}</span>
-              <button
-                onClick={() => removeToast(toast.id)}
-                style={{ color: "var(--color-text-tertiary)", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0, padding: "2px" }}
-                aria-label="Dismiss"
-              >
-                <X size={14} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

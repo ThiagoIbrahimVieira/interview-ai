@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Clock, Square, Mic, Send, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/Toast";
@@ -12,16 +11,6 @@ interface ChatMessage {
   role: string;
   content: string;
 }
-
-const LANGUAGE_MAP: Record<string, string> = {
-  English: "en-US",
-  Spanish: "es-ES",
-  Portuguese: "pt-BR",
-  French: "fr-FR",
-  German: "de-DE",
-  Japanese: "ja-JP",
-  Chinese: "zh-CN",
-};
 
 export default function InterviewPage() {
   const router = useRouter();
@@ -35,14 +24,11 @@ export default function InterviewPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [timer, setTimer] = useState(0);
-  const [interimText, setInterimText] = useState("");
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
-  const isRecordingRef = useRef(false);
-  const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   messagesRef.current = messages;
 
@@ -146,7 +132,6 @@ Rules:
     const content = inputValue.trim();
     if (!content) return;
     setInputValue("");
-    setInterimText("");
 
     setMessages((prev) => [...prev, { role: "user", content }]);
     setAiSpeaking(true);
@@ -173,149 +158,74 @@ Rules:
     if (!SpeechRecognitionAPI) return;
 
     if (isRecording) {
-      isRecordingRef.current = false;
       setIsRecording(false);
       recognitionRef.current?.stop();
-      setInterimText("");
     } else {
       if (!recognitionRef.current) {
         const recognition = new SpeechRecognitionAPI();
         recognition.continuous = true;
         recognition.interimResults = true;
-        const session = currentSession as Record<string, unknown> | null;
-        const config = (session?.config as Record<string, unknown>) || {};
-        recognition.lang = (LANGUAGE_MAP[config.language as string]) || "en-US";
+        recognition.lang = "en-US";
         recognition.onresult = (event: SpeechRecognitionEvent) => {
           let finalTranscript = "";
           let interimTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              finalTranscript += result[0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
             } else {
-              interimTranscript += result[0].transcript;
+              interimTranscript += event.results[i][0].transcript;
             }
           }
           if (finalTranscript) {
             setInputValue((prev) => (prev + " " + finalTranscript).trim());
-            setInterimText("");
-          } else if (interimTranscript) {
-            setInterimText(interimTranscript);
           }
         };
         recognition.onerror = (event) => {
           if (event.error !== "no-speech") console.warn("Speech recognition error:", event.error);
         };
         recognition.onend = () => {
-          if (!isRecordingRef.current) return;
-          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
-          restartTimeoutRef.current = setTimeout(() => {
-            if (isRecordingRef.current && recognitionRef.current) {
-              try {
-                recognitionRef.current.start();
-              } catch {}
-            }
-          }, 100);
+          if (recognitionRef.current && isRecording) {
+            try {
+              recognitionRef.current.start();
+            } catch {}
+          }
         };
         recognitionRef.current = recognition;
       }
-      isRecordingRef.current = true;
       setIsRecording(true);
       try {
         recognitionRef.current.start();
       } catch {}
     }
-  }, [isRecording, currentSession]);
+  }, [isRecording]);
 
   const exitInterview = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
     }
-    isRecordingRef.current = false;
     setIsRecording(false);
     router.push("/dashboard");
   }, [router]);
 
   const endInterviewSession = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
     }
-    isRecordingRef.current = false;
     try {
       await api.endInterview(sessionId);
-
-      const history = messagesRef.current
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => `${m.role === "user" ? "Candidate" : "Interviewer"}: ${m.content}`)
-        .join("\n\n");
-
-      const session = currentSession as Record<string, unknown> | null;
-      const config = (session?.config as Record<string, unknown>) || {};
-
-      const evalPrompt = `You are an expert interview evaluator. Analyze this interview conversation and provide a fair, realistic evaluation.
-
-Conversation:
-${history || "(No messages recorded)"}
-
-Job: ${config.job_title || "Software Developer"}
-Type: ${config.interview_type || "Mixed"}
-Level: ${config.experience_level || "Mid-Level"}
-
-IMPORTANT: Scores must reflect ACTUAL performance. Do NOT give high scores by default. A candidate who gives short, vague, or incorrect answers should score low. A candidate who gives detailed, accurate, well-structured answers should score high.
-
-Return ONLY valid JSON, no markdown, no explanation:
-{
-  "overall_score": 0-100,
-  "category_scores": {
-    "technical_knowledge": {"score": 0-100, "feedback": "brief feedback"},
-    "communication": {"score": 0-100, "feedback": "brief feedback"},
-    "problem_solving": {"score": 0-100, "feedback": "brief feedback"},
-    "confidence": {"score": 0-100, "feedback": "brief feedback"}
-  },
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "weaknesses": ["weakness 1", "weakness 2", "weakness 3"],
-  "improvements": ["recommendation 1", "recommendation 2", "recommendation 3"]
-}`;
-
-      let evaluation = null;
-      try {
-        if (typeof window !== "undefined" && window.puter?.ai) {
-          const response = await window.puter.ai.chat([
-            { role: "user", content: evalPrompt },
-          ]);
-          const text = typeof response === "string" ? response : (response as { message?: { content?: string } })?.message?.content || String(response || "");
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            evaluation = JSON.parse(jsonMatch[0]);
-          }
-        }
-      } catch (err) {
-        console.warn("Puter.js evaluation failed:", err);
-      }
-
-      if (evaluation) {
-        try {
-          await api.evaluateInterview(sessionId, evaluation);
-        } catch (err) {
-          console.warn("Failed to save evaluation:", err);
-        }
-      }
-
       toast.success("Interview completed!");
       router.push(`/report/${sessionId}`);
     } catch {
       toast.error("Failed to end interview");
       router.push("/dashboard");
     }
-  }, [sessionId, router, toast, currentSession]);
+  }, [sessionId, router, toast]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -323,7 +233,6 @@ Return ONLY valid JSON, no markdown, no explanation:
     }, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -331,19 +240,6 @@ Return ONLY valid JSON, no markdown, no explanation:
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-      recognitionRef.current = null;
-    }
-    isRecordingRef.current = false;
-    setIsRecording(false);
-    setInterimText("");
-  }, [((currentSession as Record<string, unknown>)?.config as Record<string, unknown>)?.language]);
 
   useEffect(() => {
     api.getMessages(sessionId).then((data) => {
@@ -365,32 +261,25 @@ Return ONLY valid JSON, no markdown, no explanation:
 
   return (
     <div className="interview-page">
-      <header className="header">
+      <header className="header" style={{ borderBottom: "1px solid var(--color-border-primary)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <button className="btn btn-ghost btn-icon" onClick={exitInterview} title="Exit interview" aria-label="Exit interview">
-            <ArrowLeft size={18} />
+          <button className="btn btn-ghost btn-icon" onClick={exitInterview} title="Exit interview">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+            </svg>
           </button>
           <span className="header-title">Interview Session</span>
-          <span className="badge badge-success" style={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-success)", display: "inline-block" }}></span>
-            Active
-          </span>
+          <span className="badge badge-success">Active</span>
         </div>
         <div className="header-actions">
-          <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "var(--space-1-5, 0.375rem)", fontVariantNumeric: "tabular-nums" }}>
-            <Clock size={14} />
-            {formatTimer(timer)}
-          </span>
-          <button className="btn btn-danger btn-sm" onClick={endInterviewSession}>
-            <Square size={14} />
-            End Interview
-          </button>
+          <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{formatTimer(timer)}</span>
+          <button className="btn btn-danger btn-sm" onClick={endInterviewSession}>End Interview</button>
         </div>
       </header>
       <div className="interview-container">
         <div className="interview-messages">
           <div className="message fade-in-up">
-            <div className="message-avatar ai" style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}>AI</div>
+            <div className="message-avatar ai" style={{ width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0 }}>AI</div>
             <div className="message-body">
               <div className="message-role" style={{ color: "var(--color-accent-primary)" }}>AI Interviewer</div>
               <div className="message-content">Welcome to your interview session! I&apos;ll be your interviewer today. Let&apos;s begin. Could you start by telling me about yourself and your experience?</div>
@@ -400,7 +289,12 @@ Return ONLY valid JSON, no markdown, no explanation:
             <div key={i} className="message fade-in-up">
               <div
                 className={`message-avatar ${msg.role === "user" ? "user" : "ai"}`}
-                style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}
+                style={{
+                  width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: msg.role === "user" ? "var(--color-text-secondary)" : "white",
+                  fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0,
+                  background: msg.role === "user" ? "var(--color-bg-tertiary)" : "linear-gradient(135deg, var(--color-accent-primary), #a855f7)",
+                }}
               >
                 {msg.role === "user" ? "U" : "AI"}
               </div>
@@ -414,15 +308,10 @@ Return ONLY valid JSON, no markdown, no explanation:
           ))}
           {aiSpeaking && (
             <div className="message fade-in">
-              <div className="message-avatar ai" style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}>AI</div>
+              <div className="message-avatar ai" style={{ width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0, background: "linear-gradient(135deg, var(--color-accent-primary), #a855f7)" }}>AI</div>
               <div className="message-body">
                 <div className="message-role" style={{ color: "var(--color-accent-primary)" }}>AI Interviewer</div>
-                <div className="ai-thinking">
-                  <span className="ai-thinking-dot"></span>
-                  <span className="ai-thinking-dot" style={{ animationDelay: "0.2s" }}></span>
-                  <span className="ai-thinking-dot" style={{ animationDelay: "0.4s" }}></span>
-                  <span className="ai-thinking-text">Thinking...</span>
-                </div>
+                <div className="typing-indicator"><span></span><span></span><span></span></div>
               </div>
             </div>
           )}
@@ -430,16 +319,18 @@ Return ONLY valid JSON, no markdown, no explanation:
         </div>
         <div className="interview-input-area">
           <div className="interview-input-wrapper">
-            <button className={`voice-btn ${isRecording ? "recording" : "idle"}`} onClick={toggleVoice} title="Toggle microphone" aria-label="Toggle microphone">
-              <Mic size={18} />
+            <button className={`voice-btn ${isRecording ? "recording" : "idle"}`} onClick={toggleVoice} title="Toggle microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
             </button>
             <textarea
-              className={`interview-input ${interimText ? "transcribing" : ""}`}
-              value={inputValue + (interimText ? " " + interimText : "")}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                setInterimText("");
-              }}
+              className="interview-input"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -449,8 +340,10 @@ Return ONLY valid JSON, no markdown, no explanation:
               placeholder={isRecording ? "Listening..." : "Type your answer or press the mic to speak..."}
               rows={1}
             />
-            <button className="btn btn-primary btn-icon" onClick={sendMessage} title="Send message" aria-label="Send message" style={{ borderRadius: "var(--radius-full)", width: 42, height: 42, flexShrink: 0 }}>
-              <Send size={16} />
+            <button className="btn btn-primary btn-icon" onClick={sendMessage} title="Send message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
         </div>
