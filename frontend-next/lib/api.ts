@@ -9,7 +9,7 @@ class ApiClient {
       console.warn(
         "[InterviewAI] NEXT_PUBLIC_API_URL is not set. API calls will fail. " +
         "Set it in your Vercel dashboard environment variables to: " +
-        "https://interviewai-backend.onrender.com/api/v1"
+        "https://interviewai-backend-x1zo.onrender.com/api/v1"
       );
     }
   }
