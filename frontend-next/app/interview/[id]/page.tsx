@@ -41,6 +41,8 @@ export default function InterviewPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
+  const isRecordingRef = useRef(false);
+  const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   messagesRef.current = messages;
 
@@ -171,6 +173,7 @@ Rules:
     if (!SpeechRecognitionAPI) return;
 
     if (isRecording) {
+      isRecordingRef.current = false;
       setIsRecording(false);
       recognitionRef.current?.stop();
       setInterimText("");
@@ -204,15 +207,19 @@ Rules:
           if (event.error !== "no-speech") console.warn("Speech recognition error:", event.error);
         };
         recognition.onend = () => {
-          setInterimText("");
-          if (recognitionRef.current && isRecording) {
-            try {
-              recognitionRef.current.start();
-            } catch {}
-          }
+          if (!isRecordingRef.current) return;
+          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isRecordingRef.current && recognitionRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch {}
+            }
+          }, 100);
         };
         recognitionRef.current = recognition;
       }
+      isRecordingRef.current = true;
       setIsRecording(true);
       try {
         recognitionRef.current.start();
@@ -222,22 +229,26 @@ Rules:
 
   const exitInterview = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
     }
+    isRecordingRef.current = false;
     setIsRecording(false);
     router.push("/dashboard");
   }, [router]);
 
   const endInterviewSession = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
     }
+    isRecordingRef.current = false;
     try {
       await api.endInterview(sessionId);
       toast.success("Interview completed!");
@@ -254,6 +265,7 @@ Rules:
     }, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -263,12 +275,14 @@ Rules:
   }, []);
 
   useEffect(() => {
+    if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
       recognitionRef.current = null;
     }
+    isRecordingRef.current = false;
     setIsRecording(false);
     setInterimText("");
   }, [((currentSession as Record<string, unknown>)?.config as Record<string, unknown>)?.language]);
