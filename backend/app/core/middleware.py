@@ -4,16 +4,19 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
+trace = logging.getLogger("trace")
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        trace.info(f"[TRACE] middleware: INCOMING {request.method} {request.url.path}")
         start_time = time.time()
         response = await call_next(request)
         duration = time.time() - start_time
         logger.info(
             f"{request.method} {request.url.path} - {response.status_code} - {duration:.4f}s"
         )
+        trace.info(f"[TRACE] middleware: OUTGOING {request.method} {request.url.path} {response.status_code} in {duration:.4f}s")
         return response
 
 

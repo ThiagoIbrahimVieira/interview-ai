@@ -24,23 +24,36 @@ from app.schemas.interview import (
 from app.schemas.report import ReportResponse
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.models.user import User
+import logging
+import time
+
+trace = logging.getLogger("trace")
 
 router = APIRouter()
 
 
 @router.post("/auth/register", response_model=UserResponse, status_code=201)
 async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
+    trace.info(f"[TRACE] register endpoint: entered with email={data.email}")
     service = UserService(db)
     user = await service.register(data.email, data.password, data.full_name)
+    trace.info(f"[TRACE] register endpoint: returning user_id={user.id}")
     return user
 
 
 @router.post("/auth/login", response_model=TokenResponse)
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
+    trace.info(f"[TRACE] login endpoint: entered with email={data.email}")
+    t0 = time.monotonic()
     service = UserService(db)
+    trace.info("[TRACE] login endpoint: calling service.authenticate")
     user = await service.authenticate(data.email, data.password)
+    trace.info(f"[TRACE] login endpoint: authenticate returned user_id={user.id} in {time.monotonic() - t0:.3f}s")
+    trace.info("[TRACE] login endpoint: generating access token")
     access_token = create_access_token(data={"sub": str(user.id)})
+    trace.info("[TRACE] login endpoint: generating refresh token")
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    trace.info(f"[TRACE] login endpoint: returning response in {time.monotonic() - t0:.3f}s total")
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 

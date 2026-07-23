@@ -5,14 +5,24 @@ from app.config import get_settings
 from app.database import init_db
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
 from app.api.v1.router import router as api_router
+import logging
+import time
 
 settings = get_settings()
+
+logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL, logging.INFO))
+trace = logging.getLogger("trace")
+trace.setLevel(logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    trace.info("[TRACE] lifespan: START")
+    t0 = time.monotonic()
     await init_db()
+    trace.info(f"[TRACE] lifespan: init_db done in {time.monotonic() - t0:.3f}s, yielding now")
     yield
+    trace.info("[TRACE] lifespan: shutting down")
 
 
 app = FastAPI(
@@ -38,4 +48,5 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
+    trace.info("[TRACE] health: request received")
     return {"status": "healthy", "version": settings.APP_VERSION}

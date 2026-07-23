@@ -11,6 +11,10 @@ from app.core.exceptions import (
     ValidationException,
 )
 from typing import Optional
+import logging
+import time
+
+trace = logging.getLogger("trace")
 
 
 class UserService:
@@ -19,23 +23,34 @@ class UserService:
         self.repo = UserRepository(db)
 
     async def register(self, email: str, password: str, full_name: Optional[str] = None) -> User:
+        trace.info(f"[TRACE] register: checking existing email={email}")
         existing = await self.repo.get_by_email(email)
         if existing:
             raise ConflictException("Email already registered")
 
+        trace.info("[TRACE] register: hashing password")
         user = User(
             email=email,
             hashed_password=hash_password(password),
             full_name=full_name,
         )
-        return await self.repo.create(user)
+        trace.info("[TRACE] register: creating user in DB")
+        result = await self.repo.create(user)
+        trace.info(f"[TRACE] register: user created id={result.id}")
+        return result
 
     async def authenticate(self, email: str, password: str) -> User:
+        trace.info(f"[TRACE] authenticate: looking up email={email}")
+        t0 = time.monotonic()
         user = await self.repo.get_by_email(email)
+        trace.info(f"[TRACE] authenticate: get_by_email returned in {time.monotonic() - t0:.3f}s, user={'found' if user else 'None'}")
         if not user or not verify_password(password, user.hashed_password):
+            trace.info("[TRACE] authenticate: password verification FAILED")
             raise UnauthorizedException("Invalid email or password")
+        trace.info("[TRACE] authenticate: password verification PASSED")
         if not user.is_active:
             raise UnauthorizedException("Account is deactivated")
+        trace.info("[TRACE] authenticate: returning user")
         return user
 
     async def get_by_id(self, user_id: int) -> User:

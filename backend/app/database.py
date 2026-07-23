@@ -1,6 +1,10 @@
+import logging
+import time
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import get_settings
+
+trace = logging.getLogger("trace")
 
 settings = get_settings()
 
@@ -52,15 +56,24 @@ class Base(DeclarativeBase):
 
 
 async def get_db() -> AsyncSession:
+    trace.info("[TRACE] get_db: creating session from factory")
+    t0 = time.monotonic()
     async with async_session_factory() as session:
+        elapsed = time.monotonic() - t0
+        trace.info(f"[TRACE] get_db: session created in {elapsed:.3f}s")
         try:
             yield session
+            trace.info("[TRACE] get_db: route handler done, committing")
+            t1 = time.monotonic()
             await session.commit()
-        except Exception:
+            trace.info(f"[TRACE] get_db: commit done in {time.monotonic() - t1:.3f}s")
+        except Exception as exc:
+            trace.info(f"[TRACE] get_db: exception {type(exc).__name__}: {exc}")
             await session.rollback()
             raise
         finally:
             await session.close()
+            trace.info("[TRACE] get_db: session closed")
 
 
 async def init_db():
