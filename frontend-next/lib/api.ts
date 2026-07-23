@@ -37,7 +37,7 @@ class ApiClient {
     localStorage.removeItem("refresh_token");
   }
 
-  async request(endpoint: string, options: RequestInit = {}, retries = 2) {
+  async request(endpoint: string, options: RequestInit = {}, retries = 2): Promise<unknown> {
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
