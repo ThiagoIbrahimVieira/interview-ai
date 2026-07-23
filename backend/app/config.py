@@ -93,7 +93,16 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = 10
+    RATE_LIMIT_AI_PER_MINUTE: int = 20
     LOG_LEVEL: str = "INFO"
+
+    MAX_LOGIN_ATTEMPTS: int = 5
+    LOCKOUT_MINUTES: int = 15
+
+    MAX_INPUT_LENGTH: int = 5000
+    MAX_CUSTOM_INSTRUCTIONS_LENGTH: int = 2000
+    MAX_PER_PAGE: int = 50
 
     model_config = {"env_file": str(ENV_FILE), "extra": "ignore"}
 
