@@ -48,6 +48,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error", "type": type(exc).__name__},
     )
 
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RateLimitMiddleware, max_requests=settings.RATE_LIMIT_PER_MINUTE)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -56,8 +58,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
-app.add_middleware(RateLimitMiddleware, max_requests=settings.RATE_LIMIT_PER_MINUTE)
-app.add_middleware(LoggingMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 
