@@ -38,6 +38,21 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password must contain at least one uppercase letter");
+      return;
+    }
+
+    if (!/[a-z]/.test(password)) {
+      toast.error("Password must contain at least one lowercase letter");
+      return;
+    }
+
+    if (!/\d/.test(password)) {
+      toast.error("Password must contain at least one digit");
+      return;
+    }
+
     setLoading(true);
     try {
       await api.register(email, password, fullName);

@@ -83,6 +83,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window
 
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         client_ip = request.client.host if request.client else "unknown"
         key = f"ip:{client_ip}"
 

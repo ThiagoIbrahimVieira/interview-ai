@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_PER_MINUTE: int = 120
     RATE_LIMIT_LOGIN_PER_MINUTE: int = 10
     RATE_LIMIT_AI_PER_MINUTE: int = 20
     LOG_LEVEL: str = "INFO"

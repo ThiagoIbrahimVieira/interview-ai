@@ -95,7 +95,10 @@ class TestXSS:
     ]
 
     def test_xss_in_register(self, client):
+        from app.core.rate_limiter import get_rate_store
+        store = get_rate_store()
         for i, payload in enumerate(self.XSS_PAYLOADS):
+            store.reset_login_attempts(f"register:testclient")
             response = client.post("/api/v1/auth/register", json={
                 "email": f"xss{i}@test.com",
                 "password": "Password123",

@@ -37,7 +37,7 @@ class ApiClient {
     localStorage.removeItem("refresh_token");
   }
 
-  async request(endpoint: string, options: RequestInit = {}) {
+  async request(endpoint: string, options: RequestInit = {}, retries = 2) {
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -57,6 +57,12 @@ class ApiClient {
         "Network error: unable to reach the server. " +
         "Please check your connection or verify the API URL is configured correctly."
       );
+    }
+
+    if (response.status === 429 && retries > 0) {
+      const delay = Math.pow(2, 3 - retries) * 1000;
+      await new Promise((r) => setTimeout(r, delay));
+      return this.request(endpoint, options, retries - 1);
     }
 
     if (response.status === 401) {
