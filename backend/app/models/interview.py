@@ -42,7 +42,10 @@ class InterviewSession(Base):
 
     @hybrid_property
     def message_count(self):
-        return len(self.messages) if self.messages else 0
+        try:
+            return len(self.messages) if self.messages else 0
+        except Exception:
+            return 0
 
 
 class Message(Base):
