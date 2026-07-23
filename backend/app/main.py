@@ -10,6 +10,8 @@ import time
 
 settings = get_settings()
 
+clean_origins = [o.rstrip("/") for o in settings.ALLOWED_ORIGINS]
+
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL, logging.INFO))
 trace = logging.getLogger("trace")
 trace.setLevel(logging.INFO)
@@ -21,6 +23,7 @@ async def lifespan(app: FastAPI):
     t0 = time.monotonic()
     await init_db()
     trace.info(f"[TRACE] lifespan: init_db done in {time.monotonic() - t0:.3f}s, yielding now")
+    trace.info(f"[TRACE] lifespan: CORS origins={clean_origins}")
     yield
     trace.info("[TRACE] lifespan: shutting down")
 
@@ -35,7 +38,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=clean_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,16 +53,3 @@ app.include_router(api_router, prefix="/api/v1")
 async def health_check():
     trace.info("[TRACE] health: request received")
     return {"status": "healthy", "version": settings.APP_VERSION}
-
-
-@app.get("/debug/cors")
-async def debug_cors():
-    import os
-    raw = os.environ.get("ALLOWED_ORIGINS", "<NOT SET>")
-    return {
-        "ALLOWED_ORIGINS": settings.ALLOWED_ORIGINS,
-        "type": type(settings.ALLOWED_ORIGINS).__name__,
-        "len": len(settings.ALLOWED_ORIGINS),
-        "items": [repr(x) for x in settings.ALLOWED_ORIGINS],
-        "raw_env": repr(raw),
-    }
