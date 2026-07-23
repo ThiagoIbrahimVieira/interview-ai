@@ -50,3 +50,12 @@ app.include_router(api_router, prefix="/api/v1")
 async def health_check():
     trace.info("[TRACE] health: request received")
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+@app.get("/debug/cors")
+async def debug_cors():
+    return {
+        "ALLOWED_ORIGINS": settings.ALLOWED_ORIGINS,
+        "type": type(settings.ALLOWED_ORIGINS).__name__,
+        "len": len(settings.ALLOWED_ORIGINS),
+    }
