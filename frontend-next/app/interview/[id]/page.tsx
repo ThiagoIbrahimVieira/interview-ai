@@ -187,7 +187,6 @@ Rules:
           let interimTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
-            if (result[0].confidence < 0.3 && !result.isFinal) continue;
             if (result.isFinal) {
               finalTranscript += result[0].transcript;
             } else {
@@ -198,7 +197,7 @@ Rules:
             setInputValue((prev) => (prev + " " + finalTranscript).trim());
             setInterimText("");
           } else if (interimTranscript) {
-            setInterimText((prev) => (prev + " " + interimTranscript).trim());
+            setInterimText(interimTranscript);
           }
         };
         recognition.onerror = (event) => {
