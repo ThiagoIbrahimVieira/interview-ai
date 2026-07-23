@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Briefcase, Globe, MapPin, Layers, Building2, Gauge, Timer, FileText, Play, Loader2, X } from "lucide-react";
+import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -41,6 +43,17 @@ export default function NewInterviewPage() {
     }
   };
 
+  const fields = [
+    { name: "job_title", label: "Job Title", icon: Briefcase, type: "text", placeholder: "e.g. Software Developer", required: true },
+    { name: "language", label: "Language", icon: Globe, type: "select", options: ["English", "Spanish", "Portuguese", "French", "German", "Japanese", "Chinese"] },
+    { name: "country", label: "Country", icon: MapPin, type: "text", placeholder: "e.g. United States" },
+    { name: "experience_level", label: "Experience Level", icon: Layers, type: "select", options: ["Junior", "Mid-Level", "Senior", "Specialist"], defaultValue: "Mid-Level" },
+    { name: "interview_type", label: "Interview Type", icon: Building2, type: "select", options: ["Technical", "Behavioral", "HR", "Mixed"], defaultValue: "Mixed" },
+    { name: "company_style", label: "Company Style", icon: Building2, type: "select", options: ["Startup", "Big Tech", "Bank", "Healthcare", "Government", "Retail", "Custom"], defaultValue: "Big Tech" },
+    { name: "difficulty", label: "Difficulty", icon: Gauge, type: "select", options: ["Easy", "Medium", "Hard", "Expert"], defaultValue: "Medium" },
+    { name: "duration_minutes", label: "Duration (minutes)", icon: Timer, type: "number", defaultValue: "30", min: "5", max: "120" },
+  ];
+
   return (
     <>
       <header className="header">
@@ -54,83 +67,61 @@ export default function NewInterviewPage() {
         <div className="config-form card">
           <form onSubmit={handleSubmit}>
             <div className="config-grid">
-              <div className="input-group">
-                <label htmlFor="job_title">Job Title</label>
-                <input type="text" id="job_title" className="input" placeholder="e.g. Software Developer" required />
-              </div>
-              <div className="input-group">
-                <label htmlFor="language">Language</label>
-                <select id="language" className="input">
-                  <option value="English">English</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="Portuguese">Portuguese</option>
-                  <option value="French">French</option>
-                  <option value="German">German</option>
-                  <option value="Japanese">Japanese</option>
-                  <option value="Chinese">Chinese</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label htmlFor="country">Country</label>
-                <input type="text" id="country" className="input" placeholder="e.g. United States" />
-              </div>
-              <div className="input-group">
-                <label htmlFor="experience_level">Experience Level</label>
-                <select id="experience_level" className="input">
-                  <option value="Junior">Junior</option>
-                  <option value="Mid-Level" selected>Mid-Level</option>
-                  <option value="Senior">Senior</option>
-                  <option value="Specialist">Specialist</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label htmlFor="interview_type">Interview Type</label>
-                <select id="interview_type" className="input">
-                  <option value="Technical">Technical</option>
-                  <option value="Behavioral">Behavioral</option>
-                  <option value="HR">HR</option>
-                  <option value="Mixed" selected>Mixed</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label htmlFor="company_style">Company Style</label>
-                <select id="company_style" className="input">
-                  <option value="Startup">Startup</option>
-                  <option value="Big Tech" selected>Big Tech</option>
-                  <option value="Bank">Bank</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Government">Government</option>
-                  <option value="Retail">Retail</option>
-                  <option value="Custom">Custom</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label htmlFor="difficulty">Difficulty</label>
-                <select id="difficulty" className="input">
-                  <option value="Easy">Easy</option>
-                  <option value="Medium" selected>Medium</option>
-                  <option value="Hard">Hard</option>
-                  <option value="Expert">Expert</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label htmlFor="duration_minutes">Duration (minutes)</label>
-                <input type="number" id="duration_minutes" className="input" defaultValue={30} min={5} max={120} />
-              </div>
-              <div className="input-group full-width">
-                <label htmlFor="custom_instructions">Custom Instructions (optional)</label>
+              {fields.map((field, i) => (
+                <motion.div
+                  key={field.name}
+                  className="input-group"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.25 }}
+                >
+                  <label htmlFor={field.name} style={{ display: "flex", alignItems: "center", gap: "var(--space-1-5, 0.375rem)" }}>
+                    <field.icon size={14} style={{ color: "var(--color-text-tertiary)" }} />
+                    {field.label}
+                  </label>
+                  {field.type === "select" ? (
+                    <select id={field.name} className="input" defaultValue={field.defaultValue}>
+                      {field.options?.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type}
+                      id={field.name}
+                      className="input"
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      defaultValue={field.defaultValue}
+                      min={field.min}
+                      max={field.max}
+                    />
+                  )}
+                </motion.div>
+              ))}
+              <motion.div
+                className="input-group full-width"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: fields.length * 0.04, duration: 0.25 }}
+              >
+                <label htmlFor="custom_instructions" style={{ display: "flex", alignItems: "center", gap: "var(--space-1-5, 0.375rem)" }}>
+                  <FileText size={14} style={{ color: "var(--color-text-tertiary)" }} />
+                  Custom Instructions (optional)
+                </label>
                 <textarea id="custom_instructions" className="input" rows={3} placeholder="Any specific instructions for the AI interviewer..."></textarea>
-              </div>
+              </motion.div>
             </div>
             <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "flex-end", marginTop: "var(--space-6)" }}>
-              <button type="button" className="btn btn-secondary" onClick={() => router.push("/dashboard")}>Cancel</button>
-              <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+              <button type="button" className="btn btn-secondary" onClick={() => router.push("/dashboard")}>
+                <X size={16} />
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? (
-                  <><span className="spinner"></span> Starting...</>
+                  <><Loader2 size={16} className="spin" /> Starting...</>
                 ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" />
-                  </svg>
+                  <Play size={16} />
                 )}
                 Start Interview
               </button>

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { User, Mail, Lock, Loader2, Play } from "lucide-react";
+import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/Toast";
@@ -57,37 +59,57 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card fade-in-up">
+    <div className="auth-page grid-bg auth-glow">
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
         <div className="auth-logo">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+            <Play size={24} fill="var(--color-accent-primary)" color="var(--color-accent-primary)" />
+          </div>
           <h1>InterviewAI</h1>
           <p>Create your account</p>
         </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="input-group">
             <label htmlFor="full_name">Full Name</label>
-            <input type="text" id="full_name" className="input" placeholder="John Doe" autoComplete="name" />
+            <div className="input-with-icon">
+              <input type="text" id="full_name" className="input input-icon-field" placeholder="John Doe" autoComplete="name" />
+              <User size={16} className="input-icon" />
+            </div>
           </div>
           <div className="input-group">
             <label htmlFor="email">Email</label>
-            <input type="email" id="email" className="input" placeholder="you@example.com" required autoComplete="email" />
+            <div className="input-with-icon">
+              <input type="email" id="email" className="input input-icon-field" placeholder="you@example.com" required autoComplete="email" />
+              <Mail size={16} className="input-icon" />
+            </div>
           </div>
           <div className="input-group">
             <label htmlFor="password">Password</label>
-            <input type="password" id="password" className="input" placeholder="Min 8 characters" required minLength={8} autoComplete="new-password" />
+            <div className="input-with-icon">
+              <input type="password" id="password" className="input input-icon-field" placeholder="Min 8 characters" required minLength={8} autoComplete="new-password" />
+              <Lock size={16} className="input-icon" />
+            </div>
           </div>
           <div className="input-group">
             <label htmlFor="confirm_password">Confirm Password</label>
-            <input type="password" id="confirm_password" className="input" placeholder="Repeat password" required autoComplete="new-password" />
+            <div className="input-with-icon">
+              <input type="password" id="confirm_password" className="input input-icon-field" placeholder="Repeat password" required autoComplete="new-password" />
+              <Lock size={16} className="input-icon" />
+            </div>
           </div>
-          <button type="submit" className="btn btn-primary btn-lg" style={{ width: "100%" }} disabled={loading}>
-            {loading ? <><span className="spinner"></span> Creating account...</> : "Create Account"}
+          <button type="submit" className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: "var(--space-2)" }} disabled={loading}>
+            {loading ? <><Loader2 size={16} className="spin" /> Creating account...</> : "Create Account"}
           </button>
         </form>
         <div className="auth-footer">
           Already have an account? <Link href="/login">Sign in</Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

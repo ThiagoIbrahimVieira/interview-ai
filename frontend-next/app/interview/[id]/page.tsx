@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { ArrowLeft, Clock, Square, Mic, Send, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { useToast } from "@/components/Toast";
@@ -261,25 +262,32 @@ Rules:
 
   return (
     <div className="interview-page">
-      <header className="header" style={{ borderBottom: "1px solid var(--color-border-primary)" }}>
+      <header className="header">
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-          <button className="btn btn-ghost btn-icon" onClick={exitInterview} title="Exit interview">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-            </svg>
+          <button className="btn btn-ghost btn-icon" onClick={exitInterview} title="Exit interview" aria-label="Exit interview">
+            <ArrowLeft size={18} />
           </button>
           <span className="header-title">Interview Session</span>
-          <span className="badge badge-success">Active</span>
+          <span className="badge badge-success" style={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-success)", display: "inline-block" }}></span>
+            Active
+          </span>
         </div>
         <div className="header-actions">
-          <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>{formatTimer(timer)}</span>
-          <button className="btn btn-danger btn-sm" onClick={endInterviewSession}>End Interview</button>
+          <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "var(--space-1-5, 0.375rem)", fontVariantNumeric: "tabular-nums" }}>
+            <Clock size={14} />
+            {formatTimer(timer)}
+          </span>
+          <button className="btn btn-danger btn-sm" onClick={endInterviewSession}>
+            <Square size={14} />
+            End Interview
+          </button>
         </div>
       </header>
       <div className="interview-container">
         <div className="interview-messages">
           <div className="message fade-in-up">
-            <div className="message-avatar ai" style={{ width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0 }}>AI</div>
+            <div className="message-avatar ai" style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}>AI</div>
             <div className="message-body">
               <div className="message-role" style={{ color: "var(--color-accent-primary)" }}>AI Interviewer</div>
               <div className="message-content">Welcome to your interview session! I&apos;ll be your interviewer today. Let&apos;s begin. Could you start by telling me about yourself and your experience?</div>
@@ -289,12 +297,7 @@ Rules:
             <div key={i} className="message fade-in-up">
               <div
                 className={`message-avatar ${msg.role === "user" ? "user" : "ai"}`}
-                style={{
-                  width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center",
-                  color: msg.role === "user" ? "var(--color-text-secondary)" : "white",
-                  fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0,
-                  background: msg.role === "user" ? "var(--color-bg-tertiary)" : "linear-gradient(135deg, var(--color-accent-primary), #a855f7)",
-                }}
+                style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}
               >
                 {msg.role === "user" ? "U" : "AI"}
               </div>
@@ -308,10 +311,15 @@ Rules:
           ))}
           {aiSpeaking && (
             <div className="message fade-in">
-              <div className="message-avatar ai" style={{ width: 36, height: 36, borderRadius: "var(--radius-full)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0, background: "linear-gradient(135deg, var(--color-accent-primary), #a855f7)" }}>AI</div>
+              <div className="message-avatar ai" style={{ width: 32, height: 32, fontSize: "var(--text-xs)" }}>AI</div>
               <div className="message-body">
                 <div className="message-role" style={{ color: "var(--color-accent-primary)" }}>AI Interviewer</div>
-                <div className="typing-indicator"><span></span><span></span><span></span></div>
+                <div className="ai-thinking">
+                  <span className="ai-thinking-dot"></span>
+                  <span className="ai-thinking-dot" style={{ animationDelay: "0.2s" }}></span>
+                  <span className="ai-thinking-dot" style={{ animationDelay: "0.4s" }}></span>
+                  <span className="ai-thinking-text">Thinking...</span>
+                </div>
               </div>
             </div>
           )}
@@ -319,13 +327,8 @@ Rules:
         </div>
         <div className="interview-input-area">
           <div className="interview-input-wrapper">
-            <button className={`voice-btn ${isRecording ? "recording" : "idle"}`} onClick={toggleVoice} title="Toggle microphone">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
+            <button className={`voice-btn ${isRecording ? "recording" : "idle"}`} onClick={toggleVoice} title="Toggle microphone" aria-label="Toggle microphone">
+              <Mic size={18} />
             </button>
             <textarea
               className="interview-input"
@@ -340,10 +343,8 @@ Rules:
               placeholder={isRecording ? "Listening..." : "Type your answer or press the mic to speak..."}
               rows={1}
             />
-            <button className="btn btn-primary btn-icon" onClick={sendMessage} title="Send message">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
+            <button className="btn btn-primary btn-icon" onClick={sendMessage} title="Send message" aria-label="Send message" style={{ borderRadius: "var(--radius-full)", width: 42, height: 42, flexShrink: 0 }}>
+              <Send size={16} />
             </button>
           </div>
         </div>

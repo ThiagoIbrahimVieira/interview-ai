@@ -3,51 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { LayoutDashboard, PlusCircle, Clock, User, LogOut, Play } from "lucide-react";
+import { motion } from "framer-motion";
 
 const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    page: "dashboard",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
-        <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
-      </svg>
-    ),
-  },
-  {
-    label: "New Interview",
-    href: "/new-interview",
-    page: "new-interview",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" />
-        <line x1="8" y1="12" x2="16" y2="12" />
-      </svg>
-    ),
-  },
-  {
-    label: "History",
-    href: "/history",
-    page: "history",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-  },
-  {
-    label: "Profile",
-    href: "/profile",
-    page: "profile",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
+  { label: "Dashboard", href: "/dashboard", page: "dashboard", icon: LayoutDashboard },
+  { label: "New Interview", href: "/new-interview", page: "new-interview", icon: PlusCircle },
+  { label: "History", href: "/history", page: "history", icon: Clock },
+  { label: "Profile", href: "/profile", page: "profile", icon: User },
 ];
 
 export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
@@ -74,37 +37,51 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
       <aside className={`sidebar ${isOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-primary)" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polygon points="10 8 16 12 10 16 10 8" fill="var(--color-accent-primary)" />
-            </svg>
+            <Play size={18} fill="var(--color-accent-primary)" color="var(--color-accent-primary)" />
             InterviewAI
           </div>
         </div>
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <Link
-              key={item.page}
-              href={item.href}
-              className={`nav-item ${currentPage === item.page ? "active" : ""}`}
-              onClick={handleNavClick}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = currentPage === item.page;
+            return (
+              <Link
+                key={item.page}
+                href={item.href}
+                className={`nav-item ${isActive ? "active" : ""}`}
+                onClick={handleNavClick}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-indicator"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: "var(--radius-lg)",
+                      background: "var(--color-accent-muted)",
+                      zIndex: -1,
+                    }}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
-          <div className="sidebar-user" onClick={handleLogout}>
+          <div className="sidebar-user" onClick={handleLogout} role="button" tabIndex={0} aria-label="Sign out" onKeyDown={(e) => e.key === "Enter" && handleLogout()}>
             <div className="avatar">{initial.toUpperCase()}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--color-text-primary)" }}>
                 {(user?.full_name as string) || (user?.email as string) || "User"}
               </div>
               <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {(user?.email as string) || ""}
               </div>
             </div>
+            <LogOut size={14} style={{ color: "var(--color-text-tertiary)", flexShrink: 0 }} />
           </div>
         </div>
       </aside>

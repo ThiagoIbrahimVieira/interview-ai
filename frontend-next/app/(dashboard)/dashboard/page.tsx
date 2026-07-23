@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BarChart3, Target, Flame, TrendingUp, Plus, Video } from "lucide-react";
+import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
@@ -26,6 +28,8 @@ interface Stats {
   improvement: number;
 }
 
+const statIcons = [BarChart3, Target, Flame, TrendingUp];
+
 export default function DashboardPage() {
   const { user } = useStore();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -47,6 +51,13 @@ export default function DashboardPage() {
   const improvementColor = improvementVal >= 0 ? "var(--color-success)" : "var(--color-error)";
   const improvementPrefix = improvementVal >= 0 ? "+" : "";
 
+  const statValues = [
+    { label: "Total Interviews", value: stats?.total_interviews || 0 },
+    { label: "Average Score", value: `${Math.round(stats?.average_score || 0)}%` },
+    { label: "Current Streak", value: `${stats?.streak || 0} days` },
+    { label: "Improvement", value: `${improvementPrefix}${Math.round(improvementVal)}%`, color: improvementColor },
+  ];
+
   return (
     <>
       <header className="header">
@@ -60,78 +71,77 @@ export default function DashboardPage() {
         <div className="dashboard-stats">
           {loading ? (
             <>
-              <div className="stat-card"><div className="skeleton" style={{ height: 20, width: "60%" }}></div><div className="skeleton" style={{ height: 36, width: "40%", marginTop: 8 }}></div></div>
-              <div className="stat-card"><div className="skeleton" style={{ height: 20, width: "60%" }}></div><div className="skeleton" style={{ height: 36, width: "40%", marginTop: 8 }}></div></div>
-              <div className="stat-card"><div className="skeleton" style={{ height: 20, width: "60%" }}></div><div className="skeleton" style={{ height: 36, width: "40%", marginTop: 8 }}></div></div>
-              <div className="stat-card"><div className="skeleton" style={{ height: 20, width: "60%" }}></div><div className="skeleton" style={{ height: 36, width: "40%", marginTop: 8 }}></div></div>
+              <div className="stat-card"><div className="skeleton" style={{ height: 16, width: "60%" }}></div><div className="skeleton" style={{ height: 28, width: "40%", marginTop: 8 }}></div></div>
+              <div className="stat-card"><div className="skeleton" style={{ height: 16, width: "60%" }}></div><div className="skeleton" style={{ height: 28, width: "40%", marginTop: 8 }}></div></div>
+              <div className="stat-card"><div className="skeleton" style={{ height: 16, width: "60%" }}></div><div className="skeleton" style={{ height: 28, width: "40%", marginTop: 8 }}></div></div>
+              <div className="stat-card"><div className="skeleton" style={{ height: 16, width: "60%" }}></div><div className="skeleton" style={{ height: 28, width: "40%", marginTop: 8 }}></div></div>
             </>
           ) : (
-            <>
-              <div className="stat-card fade-in-up">
-                <div className="stat-card-label">Total Interviews</div>
-                <div className="stat-card-value">{stats?.total_interviews || 0}</div>
-              </div>
-              <div className="stat-card fade-in-up" style={{ animationDelay: "0.05s" }}>
-                <div className="stat-card-label">Average Score</div>
-                <div className="stat-card-value">{Math.round(stats?.average_score || 0)}%</div>
-              </div>
-              <div className="stat-card fade-in-up" style={{ animationDelay: "0.1s" }}>
-                <div className="stat-card-label">Current Streak</div>
-                <div className="stat-card-value">{stats?.streak || 0} days</div>
-              </div>
-              <div className="stat-card fade-in-up" style={{ animationDelay: "0.15s" }}>
-                <div className="stat-card-label">Improvement</div>
-                <div className="stat-card-value" style={{ color: improvementColor }}>{improvementPrefix}{Math.round(improvementVal)}%</div>
-              </div>
-            </>
+            statValues.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                className="stat-card"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06, duration: 0.3 }}
+              >
+                <div className="stat-card-icon">
+                  {(() => { const Icon = statIcons[i]; return <Icon size={18} />; })()}
+                </div>
+                <div className="stat-card-label">{stat.label}</div>
+                <div className="stat-card-value" style={stat.color ? { color: stat.color } : undefined}>{stat.value}</div>
+              </motion.div>
+            ))
           )}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-5)" }}>
-          <h2 style={{ fontSize: "var(--text-xl)", fontWeight: "var(--weight-semibold)" }}>Recent Interviews</h2>
-          <Link href="/new-interview" className="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+          <h2 style={{ fontSize: "var(--text-lg)", fontWeight: "var(--weight-semibold)", letterSpacing: "-0.01em" }}>Recent Interviews</h2>
+          <Link href="/new-interview" className="btn btn-primary btn-sm">
+            <Plus size={16} />
             New Interview
           </Link>
         </div>
         {!loading && interviews.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
-              </svg>
+              <Video size={24} />
             </div>
             <h3 className="empty-state-title">No interviews yet</h3>
             <p className="empty-state-text">Start your first interview to begin tracking your progress.</p>
-            <Link href="/new-interview" className="btn btn-primary" style={{ marginTop: "var(--space-4)" }}>
+            <Link href="/new-interview" className="btn btn-primary btn-sm">
               Start First Interview
             </Link>
           </div>
         ) : (
           <div className="interview-grid">
             {interviews.map((s, i) => (
-              <Link
+              <motion.div
                 key={s.id}
-                href={`/interview/${s.id}`}
-                className="interview-card fade-in-up"
-                style={{ animationDelay: `${i * 0.05}s`, textDecoration: "none", color: "inherit" }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 + i * 0.05, duration: 0.3 }}
               >
-                <div className="interview-card-header">
-                  <div className="interview-card-title">{escapeHtml(s.config?.job_title || "Interview")}</div>
-                  <span className={`badge ${s.status === "completed" ? "badge-success" : "badge-warning"}`}>{s.status}</span>
-                </div>
-                <div className="interview-card-meta">
-                  <span className="badge badge-info">{s.config?.interview_type || "Mixed"}</span>
-                  <span className="badge badge-info">{s.config?.difficulty || "Medium"}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-3)" }}>
-                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)" }}>{formatDate(s.created_at)}</span>
-                  <span className="interview-card-score" style={{ color: (s.final_score || 0) >= 70 ? "var(--color-success)" : (s.final_score || 0) >= 50 ? "var(--color-warning)" : "var(--color-error)" }}>
-                    {formatScore(s.final_score)}%
-                  </span>
-                </div>
-              </Link>
+                <Link
+                  href={`/interview/${s.id}`}
+                  className="interview-card"
+                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                >
+                  <div className="interview-card-header">
+                    <div className="interview-card-title">{escapeHtml(s.config?.job_title || "Interview")}</div>
+                    <span className={`badge ${s.status === "completed" ? "badge-success" : "badge-warning"}`}>{s.status}</span>
+                  </div>
+                  <div className="interview-card-meta">
+                    <span className="badge badge-info">{s.config?.interview_type || "Mixed"}</span>
+                    <span className="badge badge-info">{s.config?.difficulty || "Medium"}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-2)" }}>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-tertiary)" }}>{formatDate(s.created_at)}</span>
+                    <span className="interview-card-score" style={{ color: (s.final_score || 0) >= 70 ? "var(--color-success)" : (s.final_score || 0) >= 50 ? "var(--color-warning)" : "var(--color-error)" }}>
+                      {formatScore(s.final_score)}%
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
         )}

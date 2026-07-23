@@ -43,8 +43,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (checking) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <div className="spinner spinner-lg"></div>
+      <div className="grid-bg" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", flexDirection: "column", gap: "var(--space-4)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "var(--color-text-primary)", fontSize: "var(--text-lg)", fontWeight: "var(--weight-bold)", letterSpacing: "-0.02em" }}>
+          InterviewAI
+        </div>
+        <div className="spinner"></div>
       </div>
     );
   }
