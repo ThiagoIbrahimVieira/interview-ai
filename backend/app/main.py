@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.core.middleware import LoggingMiddleware, SecurityHeadersMiddleware
@@ -7,6 +8,7 @@ from app.core.rate_limiter import RateLimitMiddleware
 from app.api.v1.router import router as api_router
 import logging
 import time
+import traceback
 
 settings = get_settings()
 
@@ -37,6 +39,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
+    logger.error(f"Unhandled exception: {exc}\n{''.join(tb)}")
+    detail = str(exc) if settings.DEBUG else "Internal server error"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": detail, "type": type(exc).__name__},
+    )
+
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -54,3 +67,28 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+@app.get("/debug/db")
+async def debug_db():
+    from app.database import engine
+    try:
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT 1"))
+            return {"db": "ok", "result": result.scalar()}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"db": "error", "detail": str(e), "type": type(e).__name__})
+
+
+@app.get("/debug/alembic")
+async def debug_alembic():
+    from app.database import engine
+    try:
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position"))
+            columns = [row[0] for row in result.fetchall()]
+            return {"columns": columns, "has_token_version": "token_version" in columns}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
