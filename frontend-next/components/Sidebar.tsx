@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { api } from "@/lib/api";
 import { LayoutDashboard, PlusCircle, Clock, User, LogOut, Play } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,7 +22,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
   const currentPage = navItems.find((item) => pathname === item.href)?.page || "";
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore errors — clear tokens anyway
+    }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     router.push("/login");

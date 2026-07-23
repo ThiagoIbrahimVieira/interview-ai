@@ -81,8 +81,15 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore errors — clear tokens anyway
+    }
+    const theme = localStorage.getItem("theme");
     localStorage.clear();
+    if (theme) localStorage.setItem("theme", theme);
     router.push("/login");
   };
 

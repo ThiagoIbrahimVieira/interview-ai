@@ -105,10 +105,10 @@ export default function ReportPage() {
     (text || fallback).split("\n").filter(Boolean);
 
   const categoryScores = [
-    { label: "Technical Knowledge", value: Math.round(score * 0.85 + Math.random() * 15), color: scoreColor },
-    { label: "Communication", value: Math.round(score * 0.9 + Math.random() * 10), color: "var(--color-success)" },
-    { label: "Problem Solving", value: Math.round(score * 0.8 + Math.random() * 20), color: "var(--color-info)" },
-    { label: "Confidence", value: Math.round(score * 0.88 + Math.random() * 12), color: "var(--color-warning)" },
+    { label: "Technical Knowledge", value: Math.min(100, Math.round(score * 0.9 + 5)), color: scoreColor },
+    { label: "Communication", value: Math.min(100, Math.round(score * 0.95 + 3)), color: "var(--color-success)" },
+    { label: "Problem Solving", value: Math.min(100, Math.round(score * 0.85 + 8)), color: "var(--color-info)" },
+    { label: "Confidence", value: Math.min(100, Math.round(score * 0.92 + 4)), color: "var(--color-warning)" },
   ];
 
   return (

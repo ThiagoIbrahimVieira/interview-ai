@@ -20,8 +20,16 @@ export default function NewInterviewPage() {
     setLoading(true);
 
     const form = e.currentTarget;
+    const jobTitle = (form.elements.namedItem("job_title") as HTMLInputElement).value.trim();
+
+    if (!jobTitle) {
+      toast.error("Job title is required");
+      setLoading(false);
+      return;
+    }
+
     const config = {
-      job_title: (form.elements.namedItem("job_title") as HTMLInputElement).value.trim(),
+      job_title: jobTitle,
       language: (form.elements.namedItem("language") as HTMLSelectElement).value,
       country: (form.elements.namedItem("country") as HTMLInputElement).value.trim() || null,
       experience_level: (form.elements.namedItem("experience_level") as HTMLSelectElement).value,
