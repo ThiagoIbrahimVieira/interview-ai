@@ -13,6 +13,16 @@ interface ChatMessage {
   content: string;
 }
 
+const LANGUAGE_MAP: Record<string, string> = {
+  English: "en-US",
+  Spanish: "es-ES",
+  Portuguese: "pt-BR",
+  French: "fr-FR",
+  German: "de-DE",
+  Japanese: "ja-JP",
+  Chinese: "zh-CN",
+};
+
 export default function InterviewPage() {
   const router = useRouter();
   const params = useParams();
@@ -25,6 +35,7 @@ export default function InterviewPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [interimText, setInterimText] = useState("");
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -133,6 +144,7 @@ Rules:
     const content = inputValue.trim();
     if (!content) return;
     setInputValue("");
+    setInterimText("");
 
     setMessages((prev) => [...prev, { role: "user", content }]);
     setAiSpeaking(true);
@@ -161,30 +173,39 @@ Rules:
     if (isRecording) {
       setIsRecording(false);
       recognitionRef.current?.stop();
+      setInterimText("");
     } else {
       if (!recognitionRef.current) {
         const recognition = new SpeechRecognitionAPI();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = "en-US";
+        const session = currentSession as Record<string, unknown> | null;
+        const config = (session?.config as Record<string, unknown>) || {};
+        recognition.lang = (LANGUAGE_MAP[config.language as string]) || "en-US";
         recognition.onresult = (event: SpeechRecognitionEvent) => {
           let finalTranscript = "";
           let interimTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
+            const result = event.results[i];
+            if (result[0].confidence < 0.3 && !result.isFinal) continue;
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript;
             } else {
-              interimTranscript += event.results[i][0].transcript;
+              interimTranscript += result[0].transcript;
             }
           }
           if (finalTranscript) {
             setInputValue((prev) => (prev + " " + finalTranscript).trim());
+            setInterimText("");
+          } else if (interimTranscript) {
+            setInterimText((prev) => (prev + " " + interimTranscript).trim());
           }
         };
         recognition.onerror = (event) => {
           if (event.error !== "no-speech") console.warn("Speech recognition error:", event.error);
         };
         recognition.onend = () => {
+          setInterimText("");
           if (recognitionRef.current && isRecording) {
             try {
               recognitionRef.current.start();
@@ -198,7 +219,7 @@ Rules:
         recognitionRef.current.start();
       } catch {}
     }
-  }, [isRecording]);
+  }, [isRecording, currentSession]);
 
   const exitInterview = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -241,6 +262,17 @@ Rules:
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+    setInterimText("");
+  }, [((currentSession as Record<string, unknown>)?.config as Record<string, unknown>)?.language]);
 
   useEffect(() => {
     api.getMessages(sessionId).then((data) => {
@@ -331,9 +363,12 @@ Rules:
               <Mic size={18} />
             </button>
             <textarea
-              className="interview-input"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              className={`interview-input ${interimText ? "transcribing" : ""}`}
+              value={inputValue + (interimText ? " " + interimText : "")}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setInterimText("");
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
