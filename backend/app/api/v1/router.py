@@ -22,7 +22,7 @@ from app.schemas.interview import (
     MessageCreate,
     MessageResponse,
 )
-from app.schemas.report import ReportResponse
+from app.schemas.report import ReportResponse, EvaluationRequest
 from app.core.security import create_access_token, create_refresh_token, decode_token, revoke_token
 from app.core.rate_limiter import get_rate_store
 from app.core.secure_logging import SecureLogger
@@ -246,6 +246,27 @@ async def end_interview(
     return session
 
 
+@router.post("/interviews/{session_id}/evaluate", response_model=ReportResponse)
+async def evaluate_interview(
+    session_id: int,
+    evaluation: EvaluationRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = InterviewService(db)
+    report = await service.save_evaluation(
+        session_id=session_id,
+        user_id=current_user.id,
+        overall_score=evaluation.overall_score,
+        category_scores=evaluation.category_scores,
+        strengths=evaluation.strengths,
+        weaknesses=evaluation.weaknesses,
+        improvements=evaluation.improvements,
+    )
+    logger.info(f"Interview evaluated user_id={current_user.id} session_id={session_id} score={evaluation.overall_score}")
+    return report
+
+
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     current_user: User = Depends(get_current_user),
@@ -271,4 +292,7 @@ async def get_report(
     report = await report_repo.get_by_session_id(session_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+
+    scores = await report_repo.get_session_scores(session_id)
+    report.scores = scores
     return report

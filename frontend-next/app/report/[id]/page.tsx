@@ -22,6 +22,11 @@ interface ReportData {
   strengths: string | null;
   weaknesses: string | null;
   improvements: string | null;
+  scores?: Array<{
+    category: string;
+    score: number;
+    feedback?: string;
+  }>;
 }
 
 function generateFallbackStrengths() {
@@ -104,11 +109,16 @@ export default function ReportPage() {
   const parseList = (text: string | null | undefined, fallback: string) =>
     (text || fallback).split("\n").filter(Boolean);
 
+  const getScoreValue = (category: string, fallback: number): number => {
+    const found = report?.scores?.find((s) => s.category === category);
+    return found ? Math.round(found.score) : fallback;
+  };
+
   const categoryScores = [
-    { label: "Technical Knowledge", value: Math.min(100, Math.round(score * 0.9 + 5)), color: scoreColor },
-    { label: "Communication", value: Math.min(100, Math.round(score * 0.95 + 3)), color: "var(--color-success)" },
-    { label: "Problem Solving", value: Math.min(100, Math.round(score * 0.85 + 8)), color: "var(--color-info)" },
-    { label: "Confidence", value: Math.min(100, Math.round(score * 0.92 + 4)), color: "var(--color-warning)" },
+    { label: "Technical Knowledge", value: getScoreValue("technical_knowledge", Math.min(100, Math.round(score * 0.9 + 5))), color: scoreColor },
+    { label: "Communication", value: getScoreValue("communication", Math.min(100, Math.round(score * 0.95 + 3))), color: "var(--color-success)" },
+    { label: "Problem Solving", value: getScoreValue("problem_solving", Math.min(100, Math.round(score * 0.85 + 8))), color: "var(--color-info)" },
+    { label: "Confidence", value: getScoreValue("confidence", Math.min(100, Math.round(score * 0.92 + 4))), color: "var(--color-warning)" },
   ];
 
   return (

@@ -109,5 +109,44 @@ class InterviewService:
         )
         return await self.report_repo.create_score(s)
 
+    async def save_evaluation(
+        self,
+        session_id: int,
+        user_id: int,
+        overall_score: int,
+        category_scores: dict,
+        strengths: str,
+        weaknesses: str,
+        improvements: str,
+    ) -> Report:
+        session = await self.get_session(session_id, user_id)
+
+        existing = await self.report_repo.get_by_session_id(session_id)
+        if existing:
+            return existing
+
+        report = Report(
+            session_id=session_id,
+            overall_score=overall_score,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            improvements=improvements,
+            detailed_feedback=None,
+        )
+        await self.report_repo.create_report(report)
+
+        for cat_name, cat_data in category_scores.items():
+            await self.add_score(
+                session_id=session_id,
+                category=cat_name,
+                score=cat_data["score"],
+                feedback=cat_data.get("feedback", ""),
+            )
+
+        await self.repo.update_session(session, final_score=overall_score)
+        await self.db.commit()
+
+        return report
+
     async def get_user_stats(self, user_id: int) -> dict:
         return await self.repo.get_user_stats(user_id)

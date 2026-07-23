@@ -251,13 +251,71 @@ Rules:
     isRecordingRef.current = false;
     try {
       await api.endInterview(sessionId);
+
+      const history = messagesRef.current
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => `${m.role === "user" ? "Candidate" : "Interviewer"}: ${m.content}`)
+        .join("\n\n");
+
+      const session = currentSession as Record<string, unknown> | null;
+      const config = (session?.config as Record<string, unknown>) || {};
+
+      const evalPrompt = `You are an expert interview evaluator. Analyze this interview conversation and provide a fair, realistic evaluation.
+
+Conversation:
+${history || "(No messages recorded)"}
+
+Job: ${config.job_title || "Software Developer"}
+Type: ${config.interview_type || "Mixed"}
+Level: ${config.experience_level || "Mid-Level"}
+
+IMPORTANT: Scores must reflect ACTUAL performance. Do NOT give high scores by default. A candidate who gives short, vague, or incorrect answers should score low. A candidate who gives detailed, accurate, well-structured answers should score high.
+
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "overall_score": 0-100,
+  "category_scores": {
+    "technical_knowledge": {"score": 0-100, "feedback": "brief feedback"},
+    "communication": {"score": 0-100, "feedback": "brief feedback"},
+    "problem_solving": {"score": 0-100, "feedback": "brief feedback"},
+    "confidence": {"score": 0-100, "feedback": "brief feedback"}
+  },
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "weaknesses": ["weakness 1", "weakness 2", "weakness 3"],
+  "improvements": ["recommendation 1", "recommendation 2", "recommendation 3"]
+}`;
+
+      let evaluation = null;
+      try {
+        if (typeof window !== "undefined" && window.puter?.ai) {
+          const response = await window.puter.ai.chat([
+            { role: "user", content: evalPrompt },
+          ]);
+          const text = typeof response === "string" ? response : (response as { message?: { content?: string } })?.message?.content || String(response || "");
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            evaluation = JSON.parse(jsonMatch[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Puter.js evaluation failed:", err);
+      }
+
+      if (evaluation) {
+        try {
+          await api.evaluateInterview(sessionId, evaluation);
+        } catch (err) {
+          console.warn("Failed to save evaluation:", err);
+        }
+      }
+
       toast.success("Interview completed!");
       router.push(`/report/${sessionId}`);
     } catch {
       toast.error("Failed to end interview");
       router.push("/dashboard");
     }
-  }, [sessionId, router, toast]);
+  }, [sessionId, router, toast, currentSession]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {

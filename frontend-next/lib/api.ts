@@ -213,6 +213,10 @@ class ApiClient {
     return this.post(`/interviews/${sessionId}/end`);
   }
 
+  async evaluateInterview(sessionId: number, evaluation: unknown) {
+    return this.post(`/interviews/${sessionId}/evaluate`, evaluation);
+  }
+
   async getReport(sessionId: number) {
     return this.get(`/reports/${sessionId}`);
   }

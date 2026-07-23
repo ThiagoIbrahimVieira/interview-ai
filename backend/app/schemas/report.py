@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -14,6 +14,19 @@ class ScoreResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CategoryScore(BaseModel):
+    score: float
+    feedback: Optional[str] = ""
+
+
+class EvaluationRequest(BaseModel):
+    overall_score: int
+    category_scores: Dict[str, CategoryScore]
+    strengths: str
+    weaknesses: str
+    improvements: str
+
+
 class ReportResponse(BaseModel):
     id: int
     session_id: int
@@ -22,6 +35,7 @@ class ReportResponse(BaseModel):
     weaknesses: Optional[str]
     improvements: Optional[str]
     detailed_feedback: Optional[str]
+    scores: List[ScoreResponse] = []
     created_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
