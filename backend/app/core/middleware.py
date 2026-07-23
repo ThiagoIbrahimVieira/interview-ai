@@ -36,7 +36,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), "
+            "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), "
             "magnetometer=(), gyroscope=(), accelerometer=()"
         )
         if settings.APP_ENV == "production":

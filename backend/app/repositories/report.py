@@ -31,3 +31,9 @@ class ReportRepository:
             select(Score).where(Score.session_id == session_id)
         )
         return list(result.scalars().all())
+
+    async def delete_scores_by_session(self, session_id: int) -> None:
+        from sqlalchemy import delete
+        await self.db.execute(
+            delete(Score).where(Score.session_id == session_id)
+        )

@@ -79,6 +79,62 @@ class InterviewService:
             ended_at=datetime.now(timezone.utc),
             duration_seconds=duration,
         )
+
+        existing_report = await self.report_repo.get_by_session_id(session_id)
+        if not existing_report:
+            messages = await self.get_messages(session_id)
+            user_messages = [m for m in messages if m.role == "user"]
+            msg_count = len(user_messages)
+
+            if msg_count == 0:
+                overall_score = 0
+                strengths = "- No responses provided during the interview"
+                weaknesses = "- Interview was not completed"
+                improvements = "- Practice answering interview questions"
+            else:
+                avg_length = sum(len(m.content) for m in user_messages) / msg_count
+                if avg_length > 200:
+                    overall_score = 75
+                    strengths = "- Provided detailed and thoughtful responses\n- Demonstrated good communication skills\n- Showed relevant knowledge"
+                    weaknesses = "- Could be more concise in some answers"
+                    improvements = "- Practice structuring answers more concisely"
+                elif avg_length > 100:
+                    overall_score = 60
+                    strengths = "- Provided relevant responses\n- Showed basic understanding of topics"
+                    weaknesses = "- Answers could be more detailed\n- Could provide more specific examples"
+                    improvements = "- Elaborate more on technical experiences\n- Use the STAR method for behavioral questions"
+                else:
+                    overall_score = 40
+                    strengths = "- Participated in the interview"
+                    weaknesses = "- Responses were too brief\n- Lacked detail and specific examples"
+                    improvements = "- Prepare more detailed answers\n- Practice explaining concepts thoroughly"
+
+            report = Report(
+                session_id=session_id,
+                overall_score=overall_score,
+                strengths=strengths,
+                weaknesses=weaknesses,
+                improvements=improvements,
+                detailed_feedback=None,
+            )
+            await self.report_repo.create_report(report)
+
+            categories = {
+                "technical_knowledge": max(0, overall_score - 5),
+                "communication": max(0, overall_score + 5),
+                "problem_solving": max(0, overall_score - 3),
+                "confidence": max(0, overall_score + 2),
+            }
+            for cat_name, cat_score in categories.items():
+                await self.add_score(
+                    session_id=session_id,
+                    category=cat_name,
+                    score=min(100, cat_score),
+                    feedback="",
+                )
+
+            await self.repo.update_session(session, final_score=overall_score)
+
         return session
 
     async def generate_report(
@@ -123,6 +179,23 @@ class InterviewService:
 
         existing = await self.report_repo.get_by_session_id(session_id)
         if existing:
+            existing.overall_score = overall_score
+            existing.strengths = strengths
+            existing.weaknesses = weaknesses
+            existing.improvements = improvements
+            await self.db.flush()
+            
+            await self.report_repo.delete_scores_by_session(session_id)
+            for cat_name, cat_data in category_scores.items():
+                await self.add_score(
+                    session_id=session_id,
+                    category=cat_name,
+                    score=cat_data["score"],
+                    feedback=cat_data.get("feedback", ""),
+                )
+            
+            await self.repo.update_session(session, final_score=overall_score)
+            await self.db.commit()
             return existing
 
         report = Report(
